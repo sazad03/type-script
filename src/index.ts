@@ -26,7 +26,6 @@ class App {
     }
 
     private configureRoutes(): void {
-
         this.app.post('/', async (req: Request, res: Response) => {
             try {
                 const { username, email, password } = req.body;
@@ -65,11 +64,59 @@ class App {
 
         this.app.get('/', this.middlewares, async (req: Request, res: Response) => {
             try {
-                const userDetails = await User.findAll();
-                return res.status(200).json({ message: userDetails })
+                let userDetails = await User.findAll();
+                userDetails = userDetails.map((element) => {
+                    return {
+                        email : element.email,
+                        username : element.username,
+                        id : element.id,
+                        createdAt : element.createdAt
+                    }
+                })
+                return res.status(200).json(userDetails)
             } catch (err) {
                 console.log('ERR :: ', err);
                 return res.status(500).json({ error: 'Internal Server Error' })
+            }
+        })
+
+        this.app.patch('/', this.middlewares, async(req : Request, res: Response) => {
+            try{
+                const {email, username, password} = req.body;
+                const object = {};
+                if(email)
+                    object.email = email;
+
+                if(password){
+                    const encryptedPassword = bcrypt.hash(password, 12);
+                    object.password = encryptedPassword;
+                }
+
+                if(username)
+                    object.username = username;
+
+                console.log(req.user.dataValues.email,object)
+                const updated = await User.update(object, {
+                    where : {email : req.user.dataValues.email}
+                })
+               
+
+                return res.status(200).json({message : 'Updated'})
+            }catch(err){
+                console.log('DATA :::: ', err);
+                return res.status(500).json({error : 'Something went wrong'})
+            }
+        })
+
+        this.app.delete('/', this.middlewares, async(req : Request, res : Response) => {
+            try{
+                const {email} = req.body;
+
+                await User.destroy({where : {email}});
+                return res.status(200).json({message : 'user deleted'})
+            }catch(err){
+                console.log('ERROR ::: ', err);
+                return res.status(500).json({error : 'Something went wrong'})
             }
         })
     }
@@ -122,10 +169,9 @@ class App {
         this.app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(specs));
     }
 
-    private async middlewares(req : Request, res : Response, next) : Response {
+    private async middlewares(req : Request, res : Response, next : void) : Response {
             try{
                 const token = req.headers["authorization"]
-               
                 if(!token)
                     return res.status(403).json({error : 'Please provide valid JWT Token'})
                 
@@ -136,7 +182,7 @@ class App {
                 if(!isUserExist)
                     return res.status(403).json({error : 'Unathorized User'})
         
-                req.user = decodedToken;
+                req.user = isUserExist;
                 next();
             }catch(err){
                 console.log('Something went wrong', err)
@@ -148,3 +194,4 @@ class App {
 new App();
 
 
+export {}
