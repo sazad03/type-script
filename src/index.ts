@@ -64,6 +64,7 @@ class App {
 
         this.app.get('/', this.middlewares, async (req: Request, res: Response) => {
             try {
+                console.log('I am here');
                 let userDetails = await User.findAll();
                 userDetails = userDetails.map((element) => {
                     return {
